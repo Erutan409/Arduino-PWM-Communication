@@ -20,6 +20,71 @@ enum BIT {
 	,LOW_BIT = 0x00
 };
 
+struct PWMC_TimeTracking {
+
+	public:
+
+		PWMC_TimeTracking(uint32_t *window) {
+			this->_window = window;
+			uint32_t micros = ::micros();
+			(*this->commStart()) = micros;
+			(*this->commLast()) = micros;
+		};
+
+		uint32_t *commStart(void) {
+			return &this->_time[0];
+		};
+
+		uint32_t *commLast(void) {
+			return &this->_time[1];
+		};
+
+		uint32_t *updateCommStart(void) {
+			return this->_updateCommVal(this->commStart());
+		};
+
+		uint32_t *updateCommLast(void) {
+			return this->_updateCommVal(this->commLast());
+		};
+
+		bool nextWindow(uint16_t bitsTransfered = 0) {
+			uint32_t check = *this->_window * bitsTransfered;
+
+			return Avail::micros(&check, this->commStart());
+		};
+
+	private:
+		uint32_t _time[2] = {0};
+		uint32_t *_window;
+
+		uint32_t *_updateCommVal(uint32_t *val) {
+			(*val) = micros();
+			return val;
+		};
+
+};
+
+struct PWMC_BitTracking {
+
+	public:
+
+		uint16_t * bitsReadInByte(void) {
+			return &this->_bits[0];
+		};
+
+		uint16_t *totalBitsRead(void) {
+			return &this->_bits[1];
+		};
+
+		void reset(void) {
+		
+		};
+
+	private:
+		uint16_t _bits[2] = { 0 };
+
+};
+
 class PWMC {
 
 	public:
@@ -27,8 +92,7 @@ class PWMC {
 		PWMC(uint8_t sendPin, uint8_t receivePin) {
 			this->_sendPin = sendPin;
 			this->_receivePin = receivePin;
-
-			this->_updateLastAction();
+			this->_track = new PWMC_TimeTracking(&this->_window);
 		};
 
 		PWMC_Mode *getMode(void) {
@@ -55,25 +119,21 @@ class PWMC {
 		uint8_t _sendPin, _receivePin;
 		PWMC_Mode _mode = LISTEN;
 		PWMC_Handshake _handshake = NONE;
-		uint32_t _lastAction;
+		PWMC_TimeTracking *_track;
 		const uint32_t _window = 100; // microseconds
 		uint8_t _byte = 0x0;
-		uint8_t _bitPos = 0;
+		uint8_t _bitsRead = 0x0;
+		uint8_t _bitPos = 0x0;
 
 		void _setMode(PWMC_Mode mode) {
 			this->_mode = mode;
-		};
-
-		void _updateLastAction(void) {
-			this->_lastAction = micros();
 		};
 
 		PWMC_Handshake &_doHandshake(void) {
 			PWMC_Handshake &handshake = this->_handshake;
 			PWMC_Mode &mode = this->_mode;
 			BIT bit;
-
-			static uint8_t bitsRead = 0;
+			uint8_t &bitsRead = this->_bitsRead;
 
 			switch (handshake) {
 
@@ -110,9 +170,8 @@ class PWMC {
 		};
 
 		bool _readBit(BIT &bit) {
-			if (Avail::micros(&this->_window, &this->_lastAction)) {
+			if ((*this->_track).nextWindow()) {
 				bit = digitalRead(this->_receivePin);
-				this->_updateLastAction();
 				return true;
 			}
 
