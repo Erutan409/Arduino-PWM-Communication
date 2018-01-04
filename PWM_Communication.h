@@ -68,7 +68,7 @@ struct PWMC_BitTracking {
 
 	public:
 
-		uint16_t * bitsReadInByte(void) {
+		uint16_t *bitsReadInByte(void) {
 			return &this->_bits[0];
 		};
 
@@ -76,12 +76,34 @@ struct PWMC_BitTracking {
 			return &this->_bits[1];
 		};
 
-		void reset(void) {
-		
+		uint16_t *updateBitsReadInByte(void) {
+			return this->_updateBitsVal(this->bitsReadInByte());
+		};
+
+		uint16_t *updateTotalBitsRead(void) {
+			return this->_updateBitsVal(this->totalBitsRead());
+		};
+
+		void resetBitsReadInByte(void) {
+			(*this->bitsReadInByte()) = 0;
+		};
+
+		void resetTotalBitsRead(void) {
+			(*this->totalBitsRead()) = 0;
+		};
+
+		void resetAll(void) {
+			this->resetBitsReadInByte();
+			this->resetTotalBitsRead();
 		};
 
 	private:
 		uint16_t _bits[2] = { 0 };
+
+		uint16_t *_updateBitsVal(uint16_t *val) {
+			(*val)++;
+			return val;
+		};
 
 };
 
