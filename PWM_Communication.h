@@ -1,117 +1,11 @@
 #ifndef PWM_COMMUNICATION_H
 #define PWM_COMMUNICATION_H
 
-#include <Avail.h>
-#include <PWM.h>
-
-enum PWMC_Mode {
-	TALK = 0x01
-	,LISTEN = 0x02
-};
-
-enum PWMC_Handshake {
-	NONE = 0x00
-	,IN_PROCESS = 0x01
-	,ESTABLISHED = 0x02
-};
-
-enum BIT {
-	HIGH_BIT = 0x01
-	,LOW_BIT = 0x00
-};
-
-struct PWMC_TimeTracking {
+class PWMC_Communication {
 
 	public:
 
-		PWMC_TimeTracking(uint32_t *window) {
-			this->_window = window;
-			uint32_t micros = ::micros();
-			(*this->commStart()) = micros;
-			(*this->commLast()) = micros;
-		};
-
-		uint32_t *commStart(void) {
-			return &this->_time[0];
-		};
-
-		uint32_t *commLast(void) {
-			return &this->_time[1];
-		};
-
-		uint32_t *updateCommStart(void) {
-			return this->_updateCommVal(this->commStart());
-		};
-
-		uint32_t *updateCommLast(void) {
-			return this->_updateCommVal(this->commLast());
-		};
-
-		bool nextWindow(uint16_t bitsTransfered = 0) {
-			uint32_t check = *this->_window * bitsTransfered;
-
-			return Avail::micros(&check, this->commStart());
-		};
-
-	private:
-		uint32_t _time[2] = {0};
-		uint32_t *_window;
-
-		uint32_t *_updateCommVal(uint32_t *val) {
-			(*val) = micros();
-			return val;
-		};
-
-};
-
-struct PWMC_BitTracking {
-
-	public:
-
-		uint16_t *bitsReadInByte(void) {
-			return &this->_bits[0];
-		};
-
-		uint16_t *totalBitsRead(void) {
-			return &this->_bits[1];
-		};
-
-		uint16_t *updateBitsReadInByte(void) {
-			return this->_updateBitsVal(this->bitsReadInByte());
-		};
-
-		uint16_t *updateTotalBitsRead(void) {
-			return this->_updateBitsVal(this->totalBitsRead());
-		};
-
-		void resetBitsReadInByte(void) {
-			(*this->bitsReadInByte()) = 0;
-		};
-
-		void resetTotalBitsRead(void) {
-			(*this->totalBitsRead()) = 0;
-		};
-
-		void resetAll(void) {
-			this->resetBitsReadInByte();
-			this->resetTotalBitsRead();
-		};
-
-	private:
-		uint16_t _bits[2] = { 0 };
-
-		uint16_t *_updateBitsVal(uint16_t *val) {
-			(*val)++;
-			return val;
-		};
-
-};
-
-class PWMC {
-
-	public:
-
-		PWMC(uint8_t sendPin, uint8_t receivePin) {
+		PWMC_Communication(uint8_t sendPin, uint8_t receivePin) {
 			this->_sendPin = sendPin;
 			this->_receivePin = receivePin;
 			this->_track = new PWMC_TimeTracking(&this->_window);
@@ -121,7 +15,7 @@ class PWMC {
 			return &this->_mode;
 		};
 
-		PWMC &send(char byte) {
+		PWMC_Communication &send(char byte) {
 			this->_setMode(TALK);
 
 			return *this;
@@ -137,32 +31,58 @@ class PWMC {
 			}
 		};
 
+		bool ready(void) {
+			return (*this->_getByte()).finished();
+		};
+
+		char read(void) {
+			PWMC_Byte &byte = *this->_getByte();
+
+			if (byte.finished()) {
+				uint8_t data = *byte.fetch();
+				this->_goodbyeByte();
+				return (char)data;
+			}
+
+			return char("");
+		};
+
 	private:
 		uint8_t _sendPin, _receivePin;
 		PWMC_Mode _mode = LISTEN;
 		PWMC_Handshake _handshake = NONE;
 		PWMC_TimeTracking *_track;
 		const uint32_t _window = 100; // microseconds
-		uint8_t _byte = 0x0;
-		uint8_t _bitsRead = 0x0;
-		uint8_t _bitPos = 0x0;
+		PWMC_Byte *_byte;
 
 		void _setMode(PWMC_Mode mode) {
 			this->_mode = mode;
+		};
+
+		PWMC_Byte *_getByte(void) {
+			if (this->_byte == nullptr) {
+				this->_byte = new PWMC_Byte();
+			}
+
+			return this->_byte;
+		};
+
+		void _goodbyeByte(void) {
+			this->_byte = nullptr;
 		};
 
 		PWMC_Handshake &_doHandshake(void) {
 			PWMC_Handshake &handshake = this->_handshake;
 			PWMC_Mode &mode = this->_mode;
 			BIT bit;
-			uint8_t &bitsRead = this->_bitsRead;
+			PWMC_Byte &byte = (*this->_getByte());
 
 			switch (handshake) {
 
 				case NONE:
 					if (mode == LISTEN && this->_readBit(bit) && bit == HIGH_BIT) {
 						handshake = IN_PROCESS;
-						bitsRead = 1;
+						++byte;
 					} else if (mode == TALK) {
 						// do stuff
 					}
@@ -170,12 +90,11 @@ class PWMC {
 
 				case IN_PROCESS:
 					if (mode == LISTEN && this->_readBit(bit)) {
-						if (bit == HIGH_BIT) {
-							if (++bitsRead == 8) { // done
-								handshake = ESTABLISHED;
-							}
-						} else { // handshake failed
+						if (bit == HIGH_BIT && (++byte).finished()) {
+							handshake = ESTABLISHED;
+						} else if (bit == LOW_BIT) { // handshake failed
 							handshake = NONE;
+							this->_goodbyeByte();
 						}
 					} else if (mode == TALK) {
 						// do stuff
@@ -194,6 +113,8 @@ class PWMC {
 		bool _readBit(BIT &bit) {
 			if ((*this->_track).nextWindow()) {
 				bit = digitalRead(this->_receivePin);
+				(*this->_track).bumpWindow();
+
 				return true;
 			}
 
