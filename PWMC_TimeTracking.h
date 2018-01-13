@@ -1,6 +1,8 @@
 #ifndef PWMC_TIMETRACKING_H
 #define PWMC_TIMETRACKING_H
 
+#include <Avail.h>
+
 class PWMC_TimeTracking {
 
 	public:

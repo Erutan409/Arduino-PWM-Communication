@@ -1,9 +1,6 @@
 #ifndef PWMC_H
 #define PWMC_H
 
-#include <Avail.h>
-#include <PWM.h>
-
 enum BIT {
 	HIGH_BIT = 0x01
 	, LOW_BIT = 0x00
