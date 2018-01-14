@@ -7,7 +7,7 @@ class PWMC_TimeTracking {
 
 	public:
 
-		PWMC_TimeTracking(uint32_t *window) {
+		PWMC_TimeTracking(const uint32_t window) {
 			this->_window = window;
 			uint32_t micros = ::micros();
 			(*this->commStart()) = micros;
@@ -31,7 +31,7 @@ class PWMC_TimeTracking {
 		};
 
 		bool nextWindow(uint16_t bitsTransfered = 0) {
-			uint32_t check = *this->_window * bitsTransfered;
+			uint32_t check = this->_window * bitsTransfered;
 
 			return Avail::micros(&check, this->commStart());
 		};
@@ -39,7 +39,7 @@ class PWMC_TimeTracking {
 		uint32_t *bumpWindow(void) {
 			uint32_t *start = this->commStart();
 
-			(*this->commLast()) = (*start += *this->_window);
+			(*this->commLast()) = (*start += this->_window);
 
 			return start;
 		};
@@ -52,7 +52,7 @@ class PWMC_TimeTracking {
 
 	private:
 		uint32_t _time[2] = { 0 };
-		uint32_t *_window;
+		uint32_t _window;
 
 		uint32_t *_updateCommVal(uint32_t *val) {
 			(*val) = micros();

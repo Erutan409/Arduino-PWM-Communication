@@ -13,14 +13,14 @@ class PWMC_Byte {
 
 		PWMC_Byte &writeBit(BIT bit) {
 			if (!this->finished()) {
-				bitWrite(this->_byte, this->_currentBit++, bit);
+				bitWrite(this->_byte, this->_currentBit++, (bool)bit);
 			}
 
 			return *this;
 		};
 
 		BIT readBit() {
-			BIT bit = bitRead(this->_currentBit++, bit);
+			BIT bit = (BIT)bitRead(this->_byte, this->_currentBit++);
 
 			return bit;
 		};
@@ -34,7 +34,7 @@ class PWMC_Byte {
 		};
 
 		PWMC_Byte &operator++ () {
-			this->writeBit(HIGH_BIT);
+			this->writeBit(BIT::HIGH_BIT);
 
 			return *this;
 		};
