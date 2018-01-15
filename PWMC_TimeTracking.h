@@ -3,62 +3,68 @@
 
 #include <Avail.h>
 
-class PWMC_TimeTracking {
+namespace PWMC {
 
-	public:
+	using Avail = ::Avail;
 
-		PWMC_TimeTracking(const uint32_t window) {
-			this->_window = window;
-			uint32_t micros = ::micros();
-			(*this->commStart()) = micros;
-			(*this->commLast()) = micros;
-		};
+	class TimeTracking {
 
-		uint32_t *commStart(void) {
-			return &this->_time[0];
-		};
+		public:
 
-		uint32_t *commLast(void) {
-			return &this->_time[1];
-		};
+			TimeTracking(const uint32_t window) {
+				this->_window = window;
+				uint32_t micros = ::micros();
+				(*this->commStart()) = micros;
+				(*this->commLast()) = micros;
+			};
 
-		uint32_t *updateCommStart(void) {
-			return this->_updateCommVal(this->commStart());
-		};
+			uint32_t *commStart(void) {
+				return &this->_time[0];
+			};
 
-		uint32_t *updateCommLast(void) {
-			return this->_updateCommVal(this->commLast());
-		};
+			uint32_t *commLast(void) {
+				return &this->_time[1];
+			};
 
-		bool nextWindow(uint16_t bitsTransfered = 0) {
-			uint32_t check = this->_window * bitsTransfered;
+			uint32_t *updateCommStart(void) {
+				return this->_updateCommVal(this->commStart());
+			};
 
-			return Avail::micros(&check, this->commStart());
-		};
+			uint32_t *updateCommLast(void) {
+				return this->_updateCommVal(this->commLast());
+			};
 
-		uint32_t *bumpWindow(void) {
-			uint32_t *start = this->commStart();
+			bool nextWindow(uint16_t bitsTransfered = 0) {
+				uint32_t check = this->_window * bitsTransfered;
 
-			(*this->commLast()) = (*start += this->_window);
+				return Avail::micros(&check, this->commStart());
+			};
 
-			return start;
-		};
+			uint32_t *bumpWindow(void) {
+				uint32_t *start = this->commStart();
 
-		PWMC_TimeTracking &operator++ () {
-			this->bumpWindow();
+				(*this->commLast()) = (*start += this->_window);
 
-			return *this;
-		};
+				return start;
+			};
 
-	private:
-		uint32_t _time[2] = { 0 };
-		uint32_t _window;
+			TimeTracking &operator++ () {
+				this->bumpWindow();
 
-		uint32_t *_updateCommVal(uint32_t *val) {
-			(*val) = micros();
-			return val;
-		};
+				return *this;
+			};
 
-};
+		private:
+			uint32_t _time[2] = { 0 };
+			uint32_t _window;
+
+			uint32_t *_updateCommVal(uint32_t *val) {
+				(*val) = micros();
+				return val;
+			};
+
+	};
+
+}
 
 #endif // !PWMC_TIMETRACKING_H

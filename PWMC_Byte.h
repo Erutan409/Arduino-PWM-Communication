@@ -1,47 +1,51 @@
 #ifndef PWMC_BYTE_H
 #define PWMC_BYTE_H
 
-class PWMC_Byte {
+namespace PWMC {
 
-	public:
+	class Byte {
 
-		PWMC_Byte(void);
+		public:
 
-		PWMC_Byte(char byte) {
-			(*this->fetch()) = byte;
-		};
+			Byte(void);
 
-		PWMC_Byte &writeBit(BIT bit) {
-			if (!this->finished()) {
-				bitWrite(this->_byte, this->_currentBit++, (bool)bit);
-			}
+			Byte(char byte) {
+				(*this->fetch()) = byte;
+			};
 
-			return *this;
-		};
+			Byte &writeBit(BIT bit) {
+				if (!this->finished()) {
+					bitWrite(this->_byte, this->_currentBit++, (bool)bit);
+				}
 
-		BIT readBit() {
-			BIT bit = (BIT)bitRead(this->_byte, this->_currentBit++);
+				return *this;
+			};
 
-			return bit;
-		};
+			BIT readBit() {
+				BIT bit = (BIT)bitRead(this->_byte, this->_currentBit++);
 
-		bool finished(void) {
-			return _currentBit == 8;
-		};
+				return bit;
+			};
 
-		uint8_t *fetch(void) {
-			return &this->_byte;
-		};
+			bool finished(void) {
+				return _currentBit == 8;
+			};
 
-		PWMC_Byte &operator++ () {
-			this->writeBit(BIT::HIGH_BIT);
+			uint8_t *fetch(void) {
+				return &this->_byte;
+			};
 
-			return *this;
-		};
+			Byte &operator++ () {
+				this->writeBit(BIT::HIGH_BIT);
 
-	private:
-		uint8_t _byte, _currentBit = 0;
+				return *this;
+			};
 
-};
+		private:
+			uint8_t _byte, _currentBit = 0;
+
+	};
+
+}
 
 #endif // !PWMC_BYTE_H
