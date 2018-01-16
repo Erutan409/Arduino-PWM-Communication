@@ -2,6 +2,7 @@
 #define PWMC_TIMETRACKING_H
 
 #include <Avail.h>
+#include <PWMC_Handshake.h>
 
 namespace PWMC {
 

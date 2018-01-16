@@ -13,7 +13,7 @@ namespace PWMC {
 		,LISTEN = 0x02
 	};
 
-	enum class HandshakeState : uint8_t {
+	enum class Handshake_State : uint8_t {
 		NONE = 0x00
 		,IN_PROCESS = 0x01
 		,ESTABLISHED = 0x02
